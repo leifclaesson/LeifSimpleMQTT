@@ -1,7 +1,7 @@
 # LeifSimpleMQTT
 Very light weight MQTT helper Library for ESP8266 and ESP32
 
-No documentation yet except for the example in LeifESPBaseMQTT.
+No documentation yet except for the example in [LeifESPBaseMQTT](https://github.com/leifclaesson/LeifESPBaseMQTT/).
 
 This is designed for speed, for example inside a light bulb which is normally physically powered off.
 The Homie convention, while wonderful, is too heavy for this purpose as the huge number of required topics adds noticeably to the handshaking time.
