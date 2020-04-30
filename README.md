@@ -11,14 +11,17 @@ LeifSimpleMQTT does _not_ support discovery, that's not its purpose.
 Instead, only the following topics are published (assuming bathroom-mcu is the topic name):
 
 Immediately on connect:
+
 Publish tele/hostname/LWT = Online
 Subscribe cmnd/commandtopic
 Subscribe cmnd/grouptopic
 
 After five seconds:
+
 Publish tele/hostname/info = {"IPAddress": "192.168.x.x","Built": "Apr 1 2020 15:30:26"}
 
 After 30 seconds and then at progressively longer intervals, least often every 15 minutes:
+
 Publish tele/hostname/status = { "Uptime": "00:02:30", "WiFi Uptime": "00:02:26", "MQTT Uptime": "00:02:26" }
 
 That's all, the rest depends on handlers in lambda functions.
