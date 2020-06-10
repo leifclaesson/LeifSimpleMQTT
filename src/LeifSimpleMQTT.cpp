@@ -80,7 +80,6 @@ int iWiFiRSSI=0;
 
 void LeifSimpleMQTT::Loop()
 {
-	if(!bInitialized) return;
 
 	bool bEvenSecond=false;
 
@@ -112,6 +111,12 @@ void LeifSimpleMQTT::Loop()
 	if(WiFi.status() != WL_CONNECTED)
 	{
 		ulSecondCounter_WiFi=0;
+		ulSecondCounter_MQTT=0;
+		return;
+	}
+
+	if(!bInitialized)
+	{
 		ulSecondCounter_MQTT=0;
 		return;
 	}
