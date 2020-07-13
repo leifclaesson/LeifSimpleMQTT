@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AsyncMqttClient.h"
+#include "PangolinMQTT.h"
 #include <map>
 
 #define MQTTLIB_VERBOSE
@@ -49,7 +49,7 @@ private:
 
 	friend class LeifSimpleMQTT;
 
-	void OnMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties & properties, size_t len, size_t index, size_t total);
+	void OnMqttMessage(const char* topic, uint8_t * payload, PANGO_PROPS properties, size_t len, size_t index, size_t total);
 
 };
 
@@ -79,7 +79,7 @@ public:
 
 	uint16_t PublishDirect(const String & topic, uint8_t qos, bool retain, const String & payload);
 
-	AsyncMqttClient mqtt;
+	PangolinMQTT mqtt;
 
 	unsigned long GetUptimeSeconds_WiFi();
 	unsigned long GetUptimeSeconds_MQTT();
@@ -91,7 +91,7 @@ private:
 	std::vector<MqttSubscription *> vecSub;
 
 
-	uint16_t Publish(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr, size_t length = 0, bool dup = false, uint16_t message_id = 0);
+	uint16_t Publish(const char* topic, uint8_t qos, bool retain, const char* payload = nullptr, size_t length = 0, bool reserved = false, uint16_t message_id = 0);
 
 	void DoInitialPublishing();
 	void DoStatusPublishing();
@@ -100,8 +100,8 @@ private:
 	unsigned long ulLastReconnect=0;
 
 	void onConnect(bool sessionPresent);
-	void onDisconnect(AsyncMqttClientDisconnectReason reason);
-	void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
+	void onDisconnect(int8_t reason);
+	void onMqttMessage(const char* topic,uint8_t* payload, PANGO_PROPS properties,size_t len,size_t index,size_t total);
 
 	bool bConnecting=false;
 

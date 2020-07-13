@@ -196,9 +196,9 @@ void LeifSimpleMQTT::onConnect(bool sessionPresent)
 
 }
 
-void LeifSimpleMQTT::onDisconnect(AsyncMqttClientDisconnectReason reason)
+void LeifSimpleMQTT::onDisconnect(int8_t reason)
 {
-	if(reason==AsyncMqttClientDisconnectReason::TCP_DISCONNECTED)
+	if(reason==TCP_DISCONNECTED)
 	{
 	}
 	//csprintf("onDisconnect...");
@@ -216,7 +216,7 @@ void LeifSimpleMQTT::onDisconnect(AsyncMqttClientDisconnectReason reason)
 	}
 }
 
-void LeifSimpleMQTT::onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total)
+void LeifSimpleMQTT::onMqttMessage(const char* topic, uint8_t * payload, PANGO_PROPS properties, size_t len, size_t index, size_t total)
 {
 	String strTopic=topic;
 	_map_incoming::const_iterator citer=mapIncoming.find(strTopic);
@@ -352,19 +352,21 @@ void LeifSimpleMQTT::DoInitialPublishing()
 
 uint16_t LeifSimpleMQTT::PublishDirect(const String & topic, uint8_t qos, bool retain, const String & payload)
 {
-	return mqtt.publish(topic.c_str(), qos, retain, payload.c_str(), payload.length());
+	return mqtt.publish(topic.c_str(), qos, retain, (uint8_t *) payload.c_str(), payload.length(), false);
 }
 
 bool bFailPublish=false;
 
-uint16_t LeifSimpleMQTT::Publish(const char* topic, uint8_t qos, bool retain, const char* payload, size_t length, bool dup, uint16_t message_id)
+uint16_t LeifSimpleMQTT::Publish(const char* topic, uint8_t qos, bool retain, const char* payload, size_t length, bool reserved, uint16_t message_id)
 {
 	if(!IsConnected()) return 0;
 	uint16_t ret=0;
 
 	if(!bFailPublish)
 	{
-		ret=mqtt.publish(topic,qos,retain,payload,length,dup,message_id);
+		if(!length) length=strlen(payload);
+		mqtt.publish(topic,qos,retain,(uint8_t *) payload,length,0);
+		ret=true;
 	}
 
 	//csprintf("Publish %s: ret %i\n",topic,ret);
@@ -497,7 +499,7 @@ void LeifSimpleMQTT::Subscribe(MqttSubscription & sub)
 
 
 
-void MqttSubscription::OnMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties & properties, size_t len, size_t index, size_t total)
+void MqttSubscription::OnMqttMessage(const char* topic, uint8_t * payload, PANGO_PROPS properties, size_t len, size_t index, size_t total)
 {
 	if(properties.retain || total || topic)	//squelch unused parameter warnings
 	{
@@ -507,7 +509,7 @@ void MqttSubscription::OnMqttMessage(char* topic, char* payload, AsyncMqttClient
 	{
 
 		std::string temp;
-		temp.assign(payload,len);
+		temp.assign((const char *) payload,len);
 
 		strValue=temp.c_str();
 
