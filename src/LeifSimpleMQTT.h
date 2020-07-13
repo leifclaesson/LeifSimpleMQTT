@@ -76,17 +76,29 @@ public:
 
 
 	bool IsConnected();
+	bool IsConnecting() { return bConnecting; }
 
 	uint16_t PublishDirect(const String & topic, uint8_t qos, bool retain, const String & payload);
 
-	PangolinMQTT mqtt;
-
-	unsigned long GetUptimeSeconds_WiFi();
-	unsigned long GetUptimeSeconds_MQTT();
-
 	void Subscribe(MqttSubscription & sub);
 
+
+	PangolinMQTT mqtt;
+
+	uint32_t GetUptimeSeconds_WiFi();
+	uint32_t GetUptimeSeconds_MQTT();
+
+	const uint32_t * GetUptimeSecondsPtr_WiFi() { return &ulSecondCounter_WiFi; }
+	const uint32_t * GetUptimeSecondsPtr_MQTT() { return &ulSecondCounter_MQTT; }
+
+	void SetEnableMQTT(bool bEnable) { this->bEnableMQTT=bEnable; }
+
+
+
 private:
+
+	bool bEnableMQTT=true;
+	bool bWasConnected=false;
 
 	std::vector<MqttSubscription *> vecSub;
 
@@ -129,9 +141,9 @@ private:
 
 	char szWillTopic[128];
 
-	unsigned long ulSecondCounter_Uptime=0;
-	unsigned long ulSecondCounter_WiFi=0;
-	unsigned long ulSecondCounter_MQTT=0;
+	uint32_t ulSecondCounter_Uptime=0;
+	uint32_t ulSecondCounter_WiFi=0;
+	uint32_t ulSecondCounter_MQTT=0;
 
 	unsigned long ulLastLoopSecondCounterTimestamp=0;
 	unsigned long ulLastLoopDeciSecondCounterTimestamp=0;

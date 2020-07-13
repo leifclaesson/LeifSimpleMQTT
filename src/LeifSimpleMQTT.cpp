@@ -46,12 +46,6 @@ void LeifSimpleMQTT::Init()
 
 	strcpy(szWillTopic,String("tele/"+strID+"/LWT").c_str());
 
-	IPAddress ip;
-	ip.fromString(strMqttServerIP);
-	//ip.fromString("172.22.22.99");
-	mqtt.setServer(ip,1883);//1883
-	mqtt.setCredentials(strMqttUserName.c_str(), strMqttPassword.c_str());
-
 	mqtt.setWill(szWillTopic,2,true,"Offline");
 
 	mqtt.onConnect(std::bind(&LeifSimpleMQTT::onConnect, this, std::placeholders::_1));
@@ -87,8 +81,8 @@ void LeifSimpleMQTT::Loop()
 	{
 		ulLastLoopSecondCounterTimestamp+=1000;
 		ulSecondCounter_Uptime++;
-		ulSecondCounter_WiFi++;
-		ulSecondCounter_MQTT++;
+		if(WiFi.status() == WL_CONNECTED) ulSecondCounter_WiFi++;
+		if(mqtt.connected()) ulSecondCounter_MQTT++;
 
 		bEvenSecond=true;
 	}
@@ -124,6 +118,19 @@ void LeifSimpleMQTT::Loop()
 	if(mqtt.connected())
 	{
 
+		if(!bEnableMQTT)
+		{
+			if(bWasConnected)
+			{
+				bWasConnected=false;
+				PublishDirect(szWillTopic, 2, true, "Offline");
+				mqtt.disconnect(false);
+			}
+			return;
+		}
+
+		bWasConnected=true;
+
 		DoInitialPublishing();
 
 //		pubsubClient.loop();
@@ -150,6 +157,12 @@ void LeifSimpleMQTT::Loop()
 
 			if(!ulLastReconnect || (millis()-ulLastReconnect)>GetReconnectInterval())
 			{
+
+				IPAddress ip;
+				ip.fromString(strMqttServerIP);
+				//ip.fromString("172.22.22.99");
+				mqtt.setServer(ip,1883);//1883
+				mqtt.setCredentials(strMqttUserName.c_str(), strMqttPassword.c_str());
 
 				csprintf("Connecting to MQTT server %s...\n",strMqttServerIP.c_str());
 				bConnecting=true;
@@ -359,6 +372,8 @@ bool bFailPublish=false;
 
 uint16_t LeifSimpleMQTT::Publish(const char* topic, uint8_t qos, bool retain, const char* payload, size_t length, bool reserved, uint16_t message_id)
 {
+	(void)(reserved);
+	(void)(message_id);
 	if(!IsConnected()) return 0;
 	uint16_t ret=0;
 
@@ -469,12 +484,12 @@ int LeifSimpleMQTT::GetErrorRetryFrequency()
 	return 1000;
 }
 
-unsigned long LeifSimpleMQTT::GetUptimeSeconds_WiFi()
+uint32_t LeifSimpleMQTT::GetUptimeSeconds_WiFi()
 {
 	return ulSecondCounter_WiFi;
 }
 
-unsigned long LeifSimpleMQTT::GetUptimeSeconds_MQTT()
+uint32_t LeifSimpleMQTT::GetUptimeSeconds_MQTT()
 {
 	return ulSecondCounter_MQTT;
 }
