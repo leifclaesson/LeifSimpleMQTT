@@ -150,39 +150,44 @@ void LeifSimpleMQTT::Loop()
 
 		ulSecondCounter_MQTT=0;
 
-		if(!bConnecting)
+		if(bEnableMQTT)
 		{
 
-			//csprintf("millis()-ulLastReconnect=%i  interval=%i\n",millis()-ulLastReconnect,interval);
 
-			if(!ulLastReconnect || (millis()-ulLastReconnect)>GetReconnectInterval())
+			if(!bConnecting)
 			{
 
-				IPAddress ip;
-				ip.fromString(strMqttServerIP);
-				//ip.fromString("172.22.22.99");
-				mqtt.setServer(ip,1883);//1883
-				mqtt.setCredentials(strMqttUserName.c_str(), strMqttPassword.c_str());
+				//csprintf("millis()-ulLastReconnect=%i  interval=%i\n",millis()-ulLastReconnect,interval);
 
-				csprintf("Connecting to MQTT server %s...\n",strMqttServerIP.c_str());
-				bConnecting=true;
-				bSendError=false;
-				bInitialPublishingDone=false;
+				if(!ulLastReconnect || (millis()-ulLastReconnect)>GetReconnectInterval())
+				{
 
-				ulConnectTimestamp=millis();
-				mqtt.connect();
+					IPAddress ip;
+					ip.fromString(strMqttServerIP);
+					//ip.fromString("172.22.22.99");
+					mqtt.setServer(ip,1883);//1883
+					mqtt.setCredentials(strMqttUserName.c_str(), strMqttPassword.c_str());
+
+					csprintf("Connecting to MQTT server %s...\n",strMqttServerIP.c_str());
+					bConnecting=true;
+					bSendError=false;
+					bInitialPublishingDone=false;
+
+					ulConnectTimestamp=millis();
+					mqtt.connect();
+				}
 			}
-		}
-		else
-		{
-			//if we're still not connected after a minute, try again
-			if(!ulConnectTimestamp || (millis()-ulConnectTimestamp)>60000)
+			else
 			{
-				csprintf("Reconnect needed, dangling flag\n");
-				mqtt.disconnect(true);
-				bConnecting=false;
-			}
+				//if we're still not connected after a minute, try again
+				if(!ulConnectTimestamp || (millis()-ulConnectTimestamp)>60000)
+				{
+					csprintf("Reconnect needed, dangling flag\n");
+					mqtt.disconnect(true);
+					bConnecting=false;
+				}
 
+			}
 		}
 	}
 
