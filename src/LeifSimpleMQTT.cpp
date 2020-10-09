@@ -278,7 +278,7 @@ void LeifSimpleMQTT::DoStatusPublishing()
 			strData+="\"";
 			strData+="}";
 
-			PublishDirect(strTopic, 2, false, strData);
+			PublishDirect(strTopic, 2, true, strData);
 
 		}
 
