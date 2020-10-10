@@ -1,9 +1,15 @@
 #pragma once
 
+#include "Config.h"
+
+#ifdef USE_PANGOLIN
 #include "PangolinMQTT.h"
+#else
+#include "AsyncMqttClient.h"
+#endif
+
 #include <map>
 
-#define MQTTLIB_VERBOSE
 
 class LeifSimpleMQTT;
 class MqttSubscription;
@@ -49,7 +55,12 @@ private:
 
 	friend class LeifSimpleMQTT;
 
-	void OnMqttMessage(const char* topic, uint8_t * payload, PANGO_PROPS properties, size_t len, size_t index, size_t total);
+
+#ifdef USE_PANGOLIN
+	void onMqttMessage(const char* topic, uint8_t * payload, PANGO_PROPS properties, size_t len, size_t index, size_t total);
+#else
+	void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
+#endif
 
 };
 
@@ -83,7 +94,11 @@ public:
 	void Subscribe(MqttSubscription & sub);
 
 
+#ifdef USE_PANGOLIN
 	PangolinMQTT mqtt;
+#else
+	AsyncMqttClient mqtt;
+#endif
 
 	uint32_t GetUptimeSeconds_WiFi();
 	uint32_t GetUptimeSeconds_MQTT();
@@ -111,9 +126,15 @@ private:
 	unsigned long ulMqttReconnectCount=0;
 	unsigned long ulLastReconnect=0;
 
+#ifdef USE_PANGOLIN
 	void onConnect(bool sessionPresent);
 	void onDisconnect(int8_t reason);
 	void onMqttMessage(const char* topic,uint8_t* payload, PANGO_PROPS properties,size_t len,size_t index,size_t total);
+#else
+	void onConnect(bool sessionPresent);
+	void onDisconnect(AsyncMqttClientDisconnectReason reason);
+	void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
+#endif
 
 	bool bConnecting=false;
 

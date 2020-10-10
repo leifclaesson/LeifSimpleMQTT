@@ -214,11 +214,19 @@ void LeifSimpleMQTT::onConnect(bool sessionPresent)
 
 }
 
+#ifdef USE_PANGOLIN
 void LeifSimpleMQTT::onDisconnect(int8_t reason)
 {
 	if(reason==TCP_DISCONNECTED)
 	{
 	}
+#else
+void LeifSimpleMQTT::onDisconnect(AsyncMqttClientDisconnectReason reason)
+{
+	if(reason==AsyncMqttClientDisconnectReason::TCP_DISCONNECTED)
+	{
+	}
+#endif
 	//csprintf("onDisconnect...");
 	if(bConnecting)
 	{
@@ -234,7 +242,11 @@ void LeifSimpleMQTT::onDisconnect(int8_t reason)
 	}
 }
 
+#ifdef USE_PANGOLIN
 void LeifSimpleMQTT::onMqttMessage(const char* topic, uint8_t * payload, PANGO_PROPS properties, size_t len, size_t index, size_t total)
+#else
+void LeifSimpleMQTT::onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total)
+#endif
 {
 	String strTopic=topic;
 	_map_incoming::const_iterator citer=mapIncoming.find(strTopic);
@@ -245,7 +257,7 @@ void LeifSimpleMQTT::onMqttMessage(const char* topic, uint8_t * payload, PANGO_P
 		if(pProp)
 		{
 
-			pProp->OnMqttMessage(topic, payload, properties, len, index, total);
+			pProp->onMqttMessage(topic, payload, properties, len, index, total);
 
 		}
 	}
@@ -370,7 +382,11 @@ void LeifSimpleMQTT::DoInitialPublishing()
 
 uint16_t LeifSimpleMQTT::PublishDirect(const String & topic, uint8_t qos, bool retain, const String & payload)
 {
+#ifdef USE_PANGOLIN
 	return mqtt.publish(topic.c_str(), qos, retain, (uint8_t *) payload.c_str(), payload.length(), false);
+#else
+	return mqtt.publish(topic.c_str(), qos, retain, payload.c_str(), payload.length());
+#endif
 }
 
 bool bFailPublish=false;
@@ -385,8 +401,12 @@ uint16_t LeifSimpleMQTT::Publish(const char* topic, uint8_t qos, bool retain, co
 	if(!bFailPublish)
 	{
 		if(!length) length=strlen(payload);
+#ifdef USE_PANGOLIN
 		mqtt.publish(topic,qos,retain,(uint8_t *) payload,length,0);
 		ret=true;
+#else
+		ret=mqtt.publish(topic,qos,retain,payload,length,false,message_id);
+#endif
 	}
 
 	//csprintf("Publish %s: ret %i\n",topic,ret);
@@ -518,8 +538,11 @@ void LeifSimpleMQTT::Subscribe(MqttSubscription & sub)
 }
 
 
-
-void MqttSubscription::OnMqttMessage(const char* topic, uint8_t * payload, PANGO_PROPS properties, size_t len, size_t index, size_t total)
+#ifdef USE_PANGOLIN
+void MqttSubscription::onMqttMessage(const char* topic, uint8_t * payload, PANGO_PROPS properties, size_t len, size_t index, size_t total)
+#else
+void MqttSubscription::onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total)
+#endif
 {
 	if(properties.retain || total || topic)	//squelch unused parameter warnings
 	{
