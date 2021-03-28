@@ -8,6 +8,8 @@
 #include "AsyncMqttClient.h"
 #elif defined(USE_ARDUINOMQTT)
 #include "MQTT.h"
+#elif defined(USE_PUBSUBCLIENT)
+#include "PubSubClient.h"
 #endif
 
 #if defined(ARDUINO_ARCH_ESP8266)
@@ -70,6 +72,8 @@ private:
 	void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
 #elif defined(USE_ARDUINOMQTT)
 	void onMqttMessage(char* topic, char* payload, void * properties, size_t len, size_t index, size_t total);
+#elif defined(USE_PUBSUBCLIENT)
+	void onMqttMessage(char* topic, byte* payload, void * properties, unsigned int len, int index, int total);
 #endif
 
 };
@@ -112,6 +116,9 @@ public:
 #elif defined(USE_ARDUINOMQTT)
 	MQTTClient * pMQTT=NULL;
 	WiFiClient net;
+#elif defined(USE_PUBSUBCLIENT)
+	PubSubClient * pMQTT=NULL;
+	WiFiClient net;
 #endif
 
 	uint32_t GetUptimeSeconds_WiFi();
@@ -121,6 +128,16 @@ public:
 	const uint32_t * GetUptimeSecondsPtr_MQTT() { return &ulSecondCounter_MQTT; }
 
 	void SetEnableMQTT(bool bEnable) { this->bEnableMQTT=bEnable; }
+
+#if defined(USE_PANGOLIN)
+	const char * GetMqttLibraryID() { return "LeifSimpleMQTT/PangolinMQTT"; }
+#elif defined(USE_ASYNCMQTTCLIENT)
+	const char * GetMqttLibraryID() { return "LeifSimpleMQTT/AsyncMqttClient"; }
+#elif defined(USE_ARDUINOMQTT)
+	const char * GetMqttLibraryID() { return "LeifSimpleMQTT/ArduinoMQTT"; }
+#elif defined(USE_PUBSUBCLIENT)
+	const char * GetMqttLibraryID() { return "LeifSimpleMQTT/PubSubClient"; }
+#endif
 
 
 
@@ -152,6 +169,10 @@ private:
 	void onConnect(bool sessionPresent);
 	void onDisconnect(int8_t reason);
 	void onClientCallbackAdvanced(MQTTClient *client, char topic[], char payload[], int len);
+#elif defined(USE_PUBSUBCLIENT)
+	void onConnect(bool sessionPresent);
+	void onDisconnect(int8_t reason);
+	void onMqttMessage(char* topic, byte* payload, unsigned int len);
 #endif
 
 	bool bConnecting=false;
