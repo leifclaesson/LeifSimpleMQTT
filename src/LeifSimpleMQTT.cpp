@@ -1,5 +1,6 @@
 #include "LeifSimpleMQTT.h"
 #include "LeifEspBase.h"
+#include <string>
 
 void MqttLibDebugPrint(const char * szText);
 
@@ -376,10 +377,19 @@ void LeifSimpleMQTT::DoStatusPublishing()
 			String strData="{";
 			strData+="\"IPAddress\": \"";
 			strData+=WiFi.localIP().toString();
-			strData+="\",";
+			strData+="\"";
+			if(LeifGetVersionText().length())
+			{
+				strData+=",";
+				strData+="\"Version\": \"";
+				strData+=LeifGetVersionText();
+				strData+="\"";
+			}
+			strData+=",";
 			strData+="\"Built\": \"";
 			strData+=LeifGetCompileDate();
 			strData+="\"";
+
 			strData+="}";
 
 			PublishDirect(strTopic, 2, true, strData);
