@@ -49,6 +49,11 @@ public:
 		return strValue;
 	}
 
+	const String & GetTopic()
+	{
+		return strTopic;
+	}
+
 
 private:
 	std::vector<MqttSubscriptionCallback> vecCallback;
@@ -65,6 +70,7 @@ private:
 
 	friend class LeifSimpleMQTT;
 
+	bool bSubscriptionFlag=false;
 
 #if defined(USE_PANGOLIN)
 	void onMqttMessage(const char* topic, uint8_t * payload, PANGO_PROPS properties, size_t len, size_t index, size_t total);
@@ -108,6 +114,7 @@ public:
 
 	void Subscribe(MqttSubscription & sub);
 
+	MqttSubscription * NewSubscription(const String & topic);
 
 #if defined(USE_PANGOLIN)
 	PangolinMQTT mqtt;

@@ -242,7 +242,7 @@ void LeifSimpleMQTT::Loop()
 #elif defined(USE_PUBSUBCLIENT)
 					pMQTT->setBufferSize(256);
 					pMQTT->setServer(ip,1883);
-					int ret=pMQTT->connect(strID.c_str(), strMqttUserName.c_str(), strMqttPassword.c_str(), szWillTopic, 1, 1, "lost");
+					int ret=pMQTT->connect(strID.c_str(), strMqttUserName.c_str(), strMqttPassword.c_str(), szWillTopic, 1, 1, "Offline");
 					if(ret)
 					{
 						onConnect(false);
@@ -468,12 +468,22 @@ void LeifSimpleMQTT::DoInitialPublishing()
 		PublishDirect(szWillTopic, 2, true, "Online");
 		csprintf("Published %s = Online\n",szWillTopic);
 
+
 		for(size_t i=0;i<vecSub.size();i++)
 		{
-			bool bError=false;
-			bool bSuccess=false;
-			bError |= (bSuccess=mqtt.subscribe(vecSub[i]->strTopic.c_str(), sub_qos));
-			csprintf("Subscribed to %s: %s\n",vecSub[i]->strTopic.c_str(),bSuccess?"SUCCESS":"FAILED");
+			vecSub[i]->bSubscriptionFlag=false;
+		}
+
+		for(size_t i=0;i<vecSub.size();i++)
+		{
+			if(!vecSub[i]->bSubscriptionFlag)
+			{
+				vecSub[i]->bSubscriptionFlag=true;
+				bool bError=false;
+				bool bSuccess=false;
+				bError |= (bSuccess=mqtt.subscribe(vecSub[i]->strTopic.c_str(), sub_qos));
+				csprintf("Subscribed to %s: %s\n",vecSub[i]->strTopic.c_str(),bSuccess?"SUCCESS":"FAILED");
+			}
 		}
 
 		bDoInitialStatusPublishing=true;
@@ -657,6 +667,27 @@ void LeifSimpleMQTT::Subscribe(MqttSubscription & sub)
 	vecSub.push_back(&sub);
 	mapIncoming[sub.strTopic]=&sub;
 
+}
+
+MqttSubscription * LeifSimpleMQTT::NewSubscription(const String & topic)
+{
+	MqttSubscription * ret=NULL;
+	_map_incoming::const_iterator iter=mapIncoming.find(topic);
+	if(iter==mapIncoming.end())	//not found, this is a new subscription!
+	{
+		csprintf("NEW subscription to %s\n",topic.c_str());
+		ret=new MqttSubscription;
+		ret->strTopic=topic;
+		Subscribe(*ret);
+		return ret;
+	}
+	else
+	{
+		csprintf("Duplicate subscription to %s\n",topic.c_str());
+		//we already have a subscription to this topic!
+		ret=iter->second;
+		return ret;
+	}
 }
 
 
