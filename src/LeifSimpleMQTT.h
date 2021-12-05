@@ -100,11 +100,15 @@ public:
 	String strFriendlyName;
 	String strID;
 
+	String strJsonInfoExtra; //Extra JSON to pad into the info message, must include initial comma. Example: ,"Model": "73"
+
 
 	void Init();
 	void Quit();
 
 	void Loop();
+
+	bool bTelemetrySent=false;	//set every time telemetry was sent, so we can send something too
 
 
 	bool IsConnected();

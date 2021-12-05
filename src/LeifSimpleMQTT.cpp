@@ -374,6 +374,12 @@ void LeifSimpleMQTT::DoStatusPublishing()
 			strTopic+=strID;
 			strTopic+="/info";
 
+
+
+
+
+
+
 			String strData="{";
 			strData+="\"IPAddress\": \"";
 			strData+=WiFi.localIP().toString();
@@ -385,9 +391,17 @@ void LeifSimpleMQTT::DoStatusPublishing()
 				strData+=LeifGetVersionText();
 				strData+="\"";
 			}
+			else
+			{
+				strData+=",";
+				strData+="\"Built\": \"";
+				strData+=LeifGetCompileDate();
+				strData+="\"";
+			}
+			strData+=strJsonInfoExtra;
 			strData+=",";
-			strData+="\"Built\": \"";
-			strData+=LeifGetCompileDate();
+			strData+="\"MAC\": \"";
+			strData+=WiFi.macAddress();
 			strData+="\"";
 
 			strData+="}";
@@ -405,7 +419,7 @@ void LeifSimpleMQTT::DoStatusPublishing()
 	else if(ulSecondCounter_Uptime >= 900) interval=300;
 	else if(ulSecondCounter_Uptime >= 300) interval=300;
 
-	if((ulSecondCounter_Uptime % interval)==30)
+	if((ulSecondCounter_MQTT % interval)==20)
 	{
 		if(IsConnected())
 		{
@@ -431,12 +445,36 @@ void LeifSimpleMQTT::DoStatusPublishing()
 			strData+="\"WiFi Uptime\": \"";
 			strData+=strUptimeWiFi;
 			strData+="\",";
+			strData+="\"RSSI\": \"";
+			strData+=String(WiFi.RSSI());
+			strData+="\",";
 			strData+="\"MQTT Uptime\": \"";
 			strData+=strUptimeMQTT;
+			strData+="\",";
+			strData+="\"Heap\": \"";
+#if ARDUINO_ESP8266_MAJOR >= 3
+			{
+				ESP.setIramHeap();
+				uint32_t heapFreeIram=ESP.getFreeHeap();
+				ESP.resetHeap();
+				ESP.setDramHeap();
+				uint32_t heapFreeDram=ESP.getFreeHeap();
+				ESP.resetHeap();
+				strData+="D ";
+				strData+=String(heapFreeDram);
+				strData+=", I ";
+				strData+=String(heapFreeIram);
+			}
+#else
+			strData+=String(ESP.getFreeHeap());
+#endif
 			strData+="\"";
+
 			strData+="}";
 
 			PublishDirect(strTopic, 2, false, strData);
+
+			bTelemetrySent=true;
 		}
 	}
 
@@ -675,7 +713,9 @@ MqttSubscription * LeifSimpleMQTT::NewSubscription(const String & topic)
 	_map_incoming::const_iterator iter=mapIncoming.find(topic);
 	if(iter==mapIncoming.end())	//not found, this is a new subscription!
 	{
+#ifdef MQTTLIB_VERBOSE
 		csprintf("NEW subscription to %s\n",topic.c_str());
+#endif
 		ret=new MqttSubscription;
 		ret->strTopic=topic;
 		Subscribe(*ret);
@@ -683,7 +723,9 @@ MqttSubscription * LeifSimpleMQTT::NewSubscription(const String & topic)
 	}
 	else
 	{
+#ifdef MQTTLIB_VERBOSE
 		csprintf("Duplicate subscription to %s\n",topic.c_str());
+#endif
 		//we already have a subscription to this topic!
 		ret=iter->second;
 		return ret;
