@@ -752,10 +752,12 @@ void MqttSubscription::onMqttMessage(char* topic, byte* payload, void * properti
 	if(index==0)
 	{
 
-		std::string temp;
-		temp.assign((const char *) payload,len);
+		{
+			std::string temp;
+			temp.assign((const char *) payload,len);
 
-		strValue=temp.c_str();
+			strValue=temp.c_str();
+		}
 
 		DoCallback();
 	}

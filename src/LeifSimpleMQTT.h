@@ -54,6 +54,11 @@ public:
 		return strTopic;
 	}
 
+	void ClearValue()
+	{
+		strValue.clear();
+	}
+
 
 private:
 	std::vector<MqttSubscriptionCallback> vecCallback;
