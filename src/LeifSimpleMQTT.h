@@ -54,9 +54,9 @@ public:
 		return strTopic;
 	}
 
-	void ClearValue()
+	void SetClearPayloadAfterCallback(bool bEnable)
 	{
-		strValue.clear();
+		bClearPayloadAfterCallback=bEnable;
 	}
 
 
@@ -69,6 +69,10 @@ private:
 		{
 			vecCallback[i](this);
 		}
+		if(bClearPayloadAfterCallback)
+		{
+			strValue="";
+		}
 	};
 
 	String strValue;
@@ -76,6 +80,7 @@ private:
 	friend class LeifSimpleMQTT;
 
 	bool bSubscriptionFlag=false;
+	bool bClearPayloadAfterCallback=false;
 
 #if defined(USE_PANGOLIN)
 	void onMqttMessage(const char* topic, uint8_t * payload, PANGO_PROPS properties, size_t len, size_t index, size_t total);
