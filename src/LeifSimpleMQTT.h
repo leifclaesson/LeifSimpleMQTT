@@ -19,6 +19,7 @@
 #endif
 
 #include <map>
+#include <vector>
 
 
 class LeifSimpleMQTT;
