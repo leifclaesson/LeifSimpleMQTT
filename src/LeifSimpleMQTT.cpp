@@ -225,6 +225,19 @@ void LeifSimpleMQTT::Loop()
 
 					ulConnectTimestamp=millis();
 
+
+					uint8_t mac[6];
+					WiFi.macAddress(mac);
+
+					char szMacString[10];
+					sprintf(szMacString,"%02x%02x%02x",mac[3],mac[4],mac[5]);
+
+					String strClientID=strID;
+					strClientID += "-";
+					strClientID += szMacString;
+
+
+
 #if defined(USE_PANGOLIN) | defined(USE_ASYNCMQTTCLIENT)
 					mqtt.setServer(ip,1883);//1883
 					mqtt.setCredentials(strMqttUserName.c_str(), strMqttPassword.c_str());
@@ -233,7 +246,7 @@ void LeifSimpleMQTT::Loop()
 
 					pMQTT->begin(ip, net);
 
-					int ret=pMQTT->connect( strID.c_str(), strMqttUserName.c_str(), strMqttPassword.c_str());
+					int ret=pMQTT->connect( strClientID.c_str(), strMqttUserName.c_str(), strMqttPassword.c_str());
 					if(ret)
 					{
 						//csprintf("MQTT connect %s %s %s returned %i\n",strID.c_str(), strMqttUserName.c_str(), strMqttPassword.c_str(),ret);
@@ -241,7 +254,7 @@ void LeifSimpleMQTT::Loop()
 					}
 #elif defined(USE_PUBSUBCLIENT)
 					pMQTT->setServer(ip,1883);
-					int ret=pMQTT->connect(strID.c_str(), strMqttUserName.c_str(), strMqttPassword.c_str(), szWillTopic, 1, 1, "Offline");
+					int ret=pMQTT->connect(strClientID.c_str(), strMqttUserName.c_str(), strMqttPassword.c_str(), szWillTopic, 1, 1, "Offline");
 					if(ret)
 					{
 						onConnect(false);
