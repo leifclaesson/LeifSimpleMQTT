@@ -55,26 +55,13 @@ public:
 		return strTopic;
 	}
 
-	void SetClearPayloadAfterCallback(bool bEnable)
-	{
-		bClearPayloadAfterCallback=bEnable;
-	}
+	void SetClearPayloadAfterCallback(bool bEnable);
 
 
 private:
 	std::vector<MqttSubscriptionCallback> vecCallback;
 
-	void DoCallback()
-	{
-		for(size_t i=0;i<vecCallback.size();i++)
-		{
-			vecCallback[i](this);
-		}
-		if(bClearPayloadAfterCallback)
-		{
-			strValue="";
-		}
-	};
+	void DoCallback();
 
 	String strValue;
 

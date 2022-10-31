@@ -303,6 +303,7 @@ void LeifSimpleMQTT::onConnect(bool sessionPresent)
 
 }
 
+
 #if defined(USE_PANGOLIN)
 void LeifSimpleMQTT::onDisconnect(int8_t reason)
 {
@@ -776,3 +777,24 @@ void MqttSubscription::onMqttMessage(char* topic, byte* payload, void * properti
 
 }
 
+
+void MqttSubscription::DoCallback()
+{
+
+	for(size_t i=0;i<vecCallback.size();i++)
+	{
+		vecCallback[i](this);
+	}
+#ifdef MQTTLIB_VERBOSE
+	csprintf("%s CLEAR PAYLOAD!\n", strTopic.c_str());
+#endif
+	if(bClearPayloadAfterCallback)
+	{
+		strValue="";
+	}
+};
+
+void MqttSubscription::SetClearPayloadAfterCallback(bool bEnable)
+{
+	bClearPayloadAfterCallback=bEnable;
+}
