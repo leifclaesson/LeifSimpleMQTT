@@ -218,7 +218,7 @@ void LeifSimpleMQTT::Loop()
 					ip.fromString(strMqttServerIP);
 					//ip.fromString("172.22.22.99");
 
-					csprintf("Connecting to MQTT server %s...\n",strMqttServerIP.c_str());
+					csprintf(PSTR("Connecting to MQTT server %s...\n"),strMqttServerIP.c_str());
 					bConnecting=true;
 					bSendError=false;
 					bInitialPublishingDone=false;
@@ -230,7 +230,7 @@ void LeifSimpleMQTT::Loop()
 					WiFi.macAddress(mac);
 
 					char szMacString[10];
-					sprintf(szMacString,"%02x%02x%02x",mac[3],mac[4],mac[5]);
+					sprintf(szMacString,PSTR("%02x%02x%02x"),mac[3],mac[4],mac[5]);
 
 					String strClientID=strID;
 					strClientID += "-";
@@ -267,7 +267,7 @@ void LeifSimpleMQTT::Loop()
 				//if we're still not connected after a minute, try again
 				if(!ulConnectTimestamp || (millis()-ulConnectTimestamp)>60000)
 				{
-					csprintf("Reconnect needed, dangling flag\n");
+					csprintf(PSTR("Reconnect needed, dangling flag\n"));
 #if defined(USE_PANGOLIN) | defined(USE_ASYNCMQTTCLIENT)
 					mqtt.disconnect(true);
 #elif defined(USE_ARDUINOMQTT) | defined(USE_PUBSUBCLIENT)
@@ -328,11 +328,11 @@ void LeifSimpleMQTT::onDisconnect(int8_t reason)
 		ulMqttReconnectCount++;
 		bConnecting=false;
 		//csprintf("onDisconnect...   reason %i.. lr=%lu\n",reason,ulLastReconnect);
-		csprintf("MQTT server connection failed. Retrying in %lums\n",GetReconnectInterval());
+		csprintf(PSTR("MQTT server connection failed. Retrying in %lums\n"),GetReconnectInterval());
 	}
 	else
 	{
-		csprintf("MQTT server connection lost\n");
+		csprintf(PSTR("MQTT server connection lost\n"));
 	}
 }
 
@@ -394,20 +394,19 @@ void LeifSimpleMQTT::DoStatusPublishing()
 
 
 			String strData="{";
-			strData+="\"IPAddress\": \"";
+			strData+=PSTR("\"IPAddress\": \"");
 			strData+=WiFi.localIP().toString();
 			strData+="\"";
 			if(LeifGetVersionText().length())
 			{
 				strData+=",";
-				strData+="\"Version\": \"";
+				strData+=PSTR("\"Version\": \"");
 				strData+=LeifGetVersionText();
 				strData+="\"";
 			}
 			else
 			{
-				strData+=",";
-				strData+="\"Built\": \"";
+				strData+=PSTR(",\"Built\": \"");
 				strData+=LeifGetCompileDate();
 				strData+="\"";
 			}
@@ -447,24 +446,20 @@ void LeifSimpleMQTT::DoStatusPublishing()
 			LeifSecondsToUptimeString(strUptimeMQTT,GetUptimeSeconds_MQTT());
 
 			String strTopic;
-			strTopic="tele/";
+			strTopic=PSTR("tele/");
 			strTopic+=strID;
-			strTopic+="/status";
+			strTopic+=PSTR("/status");
 
 			String strData="{";
-			strData+="\"Uptime\": \"";
+			strData+=PSTR("\"Uptime\": \"");
 			strData+=strUptime;
-			strData+="\",";
-			strData+="\"WiFi Uptime\": \"";
+			strData+=PSTR("\",\"WiFi Uptime\": \"");
 			strData+=strUptimeWiFi;
-			strData+="\",";
-			strData+="\"RSSI\": \"";
+			strData+=PSTR("\",\"RSSI\": \"");
 			strData+=String(WiFi.RSSI());
-			strData+="\",";
-			strData+="\"MQTT Uptime\": \"";
+			strData+=PSTR("\",\"MQTT Uptime\": \"");
 			strData+=strUptimeMQTT;
-			strData+="\",";
-			strData+="\"Heap\": \"";
+			strData+=PSTR("\",\"Heap\": \"");
 #if ARDUINO_ESP8266_MAJOR >= 3
 			{
 				ESP.setIramHeap();
@@ -513,11 +508,11 @@ void LeifSimpleMQTT::DoInitialPublishing()
 
 	if(!ulInitialPublishing)
 	{
-		csprintf("MQTT Connected!\n");
+		csprintf(PSTR("MQTT Connected!\n"));
 		iPubCount_Props=0;
 
 		PublishDirect(szWillTopic, 2, true, "Online");
-		csprintf("Published %s = Online\n",szWillTopic);
+		csprintf(PSTR("Published %s = Online\n"),szWillTopic);
 
 
 		for(size_t i=0;i<vecSub.size();i++)
@@ -533,7 +528,7 @@ void LeifSimpleMQTT::DoInitialPublishing()
 				bool bError=false;
 				bool bSuccess=false;
 				bError |= (bSuccess=mqtt.subscribe(vecSub[i]->strTopic.c_str(), sub_qos));
-				csprintf("Subscribed to %s: %s\n",vecSub[i]->strTopic.c_str(),bSuccess?"SUCCESS":"FAILED");
+				csprintf(PSTR("Subscribed to %s: %s\n"),vecSub[i]->strTopic.c_str(),bSuccess?"SUCCESS":"FAILED");
 			}
 		}
 
@@ -601,7 +596,7 @@ uint16_t LeifSimpleMQTT::Publish(const char* topic, uint8_t qos, bool retain, co
 		{
 			if((int) (millis()-ulSendErrorTimestamp) > 60000)	//a full minute with no successes
 			{
-				csprintf("Full minute with no publish successes, disconnect and try again\n");
+				csprintf(PSTR("Full minute with no publish successes, disconnect and try again\n"));
 #if defined(USE_PANGOLIN) | defined(USE_ASYNCMQTTCLIENT)
 				mqtt.disconnect(true);
 #elif defined(USE_ARDUINOMQTT) | defined(USE_PUBSUBCLIENT)
