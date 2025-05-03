@@ -16,11 +16,11 @@ void MqttLibDebugPrint(const char * szText);
 
 static std::vector<MqttDebugPrintCallback> vecDebugPrint;
 
-const int ipub_qos=1;
+int ipub_qos=1;
 #if defined(USE_PUBSUBCLIENT)
-const int sub_qos=1;
+int sub_qos=1;
 #else
-const int sub_qos=2;
+int sub_qos=2;
 #endif
 
 void MqttLibRegisterDebugPrintCallback(MqttDebugPrintCallback cb)
@@ -528,7 +528,9 @@ void LeifSimpleMQTT::DoInitialPublishing()
 				bool bError=false;
 				bool bSuccess=false;
 				bError |= (bSuccess=mqtt.subscribe(vecSub[i]->strTopic.c_str(), sub_qos));
+#ifdef MQTTLIB_VERBOSE
 				csprintf(PSTR("Subscribed to %s: %s\n"),vecSub[i]->strTopic.c_str(),bSuccess?"SUCCESS":"FAILED");
+#endif
 			}
 		}
 
