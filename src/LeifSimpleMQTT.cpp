@@ -13,6 +13,9 @@ void MqttLibDebugPrint(const char * szText);
 #include "WiFi.h"
 #endif
 
+#if defined(USE_ETHERNET) & defined(ARDUINO_ARCH_ESP32)
+#include <ETH.h>
+#endif
 
 static std::vector<MqttDebugPrintCallback> vecDebugPrint;
 
@@ -127,6 +130,10 @@ void LeifSimpleMQTT::Loop()
 		ulSecondCounter_Uptime++;
 		if(WiFi.status() == WL_CONNECTED) ulSecondCounter_WiFi++;
 		if(IsConnected()) ulSecondCounter_MQTT++;
+#if defined(USE_ETHERNET) & defined(ARDUINO_ARCH_ESP32)
+		uint32_t _eth_ip=ETH.localIP();
+		if(_eth_ip!=0) ulSecondCounter_Ethernet++;
+#endif
 
 		bEvenSecond=true;
 	}
@@ -146,10 +153,22 @@ void LeifSimpleMQTT::Loop()
 	{
 	}
 
-	if(WiFi.status() != WL_CONNECTED)
+	bool bConnected=false;
+	if(WiFi.status() == WL_CONNECTED) bConnected=true;
+
+#if defined(USE_ETHERNET) & defined(ARDUINO_ARCH_ESP32)
+	uint32_t _eth_ip=ETH.localIP();
+	if(_eth_ip!=0) bConnected=true;
+#endif
+
+	if(!bConnected)
 	{
 		ulSecondCounter_WiFi=0;
 		ulSecondCounter_MQTT=0;
+#if defined(USE_ETHERNET) & defined(ARDUINO_ARCH_ESP32)
+		ulSecondCounter_Ethernet=0;
+#endif
+
 		return;
 	}
 
@@ -214,8 +233,16 @@ void LeifSimpleMQTT::Loop()
 				if(!ulLastReconnect || (millis()-ulLastReconnect)>GetReconnectInterval())
 				{
 
+					if(!HasServerIP())
+					{
+						csprintf(PSTR("No MQTT server IP configured.\n"));
+						ulLastReconnect=millis();
+						return;
+					}
+
 					IPAddress ip;
 					ip.fromString(strMqttServerIP);
+
 					//ip.fromString("172.22.22.99");
 
 					csprintf(PSTR("Connecting to MQTT server %s...\n"),strMqttServerIP.c_str());
@@ -280,6 +307,14 @@ void LeifSimpleMQTT::Loop()
 		}
 	}
 
+}
+
+bool LeifSimpleMQTT::HasServerIP()
+{
+	IPAddress ip;
+	ip.fromString(strMqttServerIP);
+	uint32_t mqtt_ip=ip;
+	return mqtt_ip!=0;
 }
 
 void LeifSimpleMQTT::onConnect(bool sessionPresent)
@@ -394,9 +429,33 @@ void LeifSimpleMQTT::DoStatusPublishing()
 
 
 			String strData="{";
+#if defined(USE_ETHERNET) & defined(ARDUINO_ARCH_ESP32)
+			strData+=PSTR("\"Ethernet IP\": \"");
+			strData+=ETH.localIP().toString();
+			strData+="\"";
+			strData+=",";
+			strData+=PSTR("\"Ethernet MAC\": \"");
+			strData+=ETH.macAddress();
+			strData+="\"";
+			strData+=",";
+#endif
+
+#if defined(USE_ETHERNET) & defined(ARDUINO_ARCH_ESP32)
+			strData+=PSTR("\"WiFi IP\": \"");
+#else
 			strData+=PSTR("\"IPAddress\": \"");
+#endif
 			strData+=WiFi.localIP().toString();
 			strData+="\"";
+			strData+=",";
+#if defined(USE_ETHERNET) & defined(ARDUINO_ARCH_ESP32)
+			strData+="\"WiFi MAC\": \"";
+#else
+			strData+="\"MAC\": \"";
+#endif
+			strData+=WiFi.macAddress();
+			strData+="\"";
+
 			if(LeifGetVersionText().length())
 			{
 				strData+=",";
@@ -411,10 +470,6 @@ void LeifSimpleMQTT::DoStatusPublishing()
 				strData+="\"";
 			}
 			strData+=strJsonInfoExtra;
-			strData+=",";
-			strData+="\"MAC\": \"";
-			strData+=WiFi.macAddress();
-			strData+="\"";
 
 			strData+="}";
 
@@ -442,6 +497,11 @@ void LeifSimpleMQTT::DoStatusPublishing()
 			String strUptimeWiFi;
 			LeifSecondsToUptimeString(strUptimeWiFi,GetUptimeSeconds_WiFi());
 
+#if defined(USE_ETHERNET) & defined(ARDUINO_ARCH_ESP32)
+			String strUptimeEthernet;
+			LeifSecondsToUptimeString(strUptimeEthernet,GetUptimeSeconds_Ethernet());
+#endif
+
 			String strUptimeMQTT;
 			LeifSecondsToUptimeString(strUptimeMQTT,GetUptimeSeconds_MQTT());
 
@@ -455,6 +515,10 @@ void LeifSimpleMQTT::DoStatusPublishing()
 			strData+=strUptime;
 			strData+=PSTR("\",\"WiFi Uptime\": \"");
 			strData+=strUptimeWiFi;
+#if defined(USE_ETHERNET) & defined(ARDUINO_ARCH_ESP32)
+			strData+=PSTR("\",\"ETH Uptime\": \"");
+			strData+=strUptimeEthernet;
+#endif
 			strData+=PSTR("\",\"RSSI\": \"");
 			strData+=String(WiFi.RSSI());
 			strData+=PSTR("\",\"MQTT Uptime\": \"");
@@ -699,9 +763,20 @@ uint32_t LeifSimpleMQTT::GetUptimeSeconds_MQTT()
 	return ulSecondCounter_MQTT;
 }
 
+#if defined(USE_ETHERNET) & defined(ARDUINO_ARCH_ESP32)
+uint32_t LeifSimpleMQTT::GetUptimeSeconds_Ethernet()
+{
+	return ulSecondCounter_Ethernet;
+}
+#endif
+
 unsigned long LeifSimpleMQTT::GetReconnectInterval()
 {
 	unsigned long interval=5000;
+	if(!HasServerIP())
+	{
+		return 60000;
+	}
 	if(ulMqttReconnectCount>=20) interval=60000;
 	else if(ulMqttReconnectCount>=15) interval=30000;
 	else if(ulMqttReconnectCount>=10) interval=20000;

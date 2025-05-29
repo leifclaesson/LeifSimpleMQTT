@@ -108,6 +108,7 @@ public:
 
 	bool bTelemetrySent=false;	//set every time telemetry was sent, so we can send something too
 
+	bool HasServerIP();
 
 	bool IsConnected();
 	bool IsConnecting() { return bConnecting; }
@@ -135,6 +136,11 @@ public:
 
 	const uint32_t * GetUptimeSecondsPtr_WiFi() { return &ulSecondCounter_WiFi; }
 	const uint32_t * GetUptimeSecondsPtr_MQTT() { return &ulSecondCounter_MQTT; }
+
+#if defined(USE_ETHERNET) & defined(ARDUINO_ARCH_ESP32)
+	uint32_t GetUptimeSeconds_Ethernet();
+	const uint32_t * GetUptimeSecondsPtr_Ethernet() { return &ulSecondCounter_Ethernet; }
+#endif
 
 	void SetEnableMQTT(bool bEnable) { this->bEnableMQTT=bEnable; }
 
@@ -213,6 +219,10 @@ private:
 	uint32_t ulSecondCounter_Uptime=0;
 	uint32_t ulSecondCounter_WiFi=0;
 	uint32_t ulSecondCounter_MQTT=0;
+
+#if defined(USE_ETHERNET) & defined(ARDUINO_ARCH_ESP32)
+	uint32_t ulSecondCounter_Ethernet=0;
+#endif
 
 	unsigned long ulLastLoopSecondCounterTimestamp=0;
 	unsigned long ulLastLoopDeciSecondCounterTimestamp=0;
