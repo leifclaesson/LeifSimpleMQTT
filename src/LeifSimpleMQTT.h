@@ -9,7 +9,17 @@
 #elif defined(USE_ARDUINOMQTT)
 #include "MQTT.h"
 #elif defined(USE_PUBSUBCLIENT)
+#ifndef MQTT_SOCKET_TIMEOUT
+#define MQTT_SOCKET_TIMEOUT 3
+#endif
 #include "PubSubClient.h"
+#elif defined(USE_MPSCG)
+#define _MQTT_PUBSUB_LOGLEVEL_ 0
+#ifndef MQTT_MAX_PACKET_SIZE
+#define MQTT_MAX_PACKET_SIZE 256
+#endif
+#include "MQTTPubSubClient_Generic.h"
+using MyPubSubClient = arduino::mqtt::PubSubClient<MQTT_MAX_PACKET_SIZE>;
 #endif
 
 #if defined(ARDUINO_ARCH_ESP8266)
@@ -20,7 +30,6 @@
 
 #include <map>
 #include <vector>
-
 
 class LeifSimpleMQTT;
 class MqttSubscription;
@@ -78,6 +87,8 @@ private:
 	void onMqttMessage(char* topic, char* payload, void * properties, size_t len, size_t index, size_t total);
 #elif defined(USE_PUBSUBCLIENT)
 	void onMqttMessage(char* topic, byte* payload, void * properties, unsigned int len, int index, int total);
+#elif defined(USE_MPSCG)
+	void onMqttMessage(const char* topic, const char* payload, void * properties, size_t len, int index, int total);
 #endif
 
 };
@@ -129,6 +140,10 @@ public:
 #elif defined(USE_PUBSUBCLIENT)
 	PubSubClient * pMQTT=NULL;
 	WiFiClient net;
+#elif defined(USE_MPSCG)
+	WiFiClient client;
+
+	MyPubSubClient mqttClient;
 #endif
 
 	uint32_t GetUptimeSeconds_WiFi();
@@ -152,6 +167,8 @@ public:
 	const char * GetMqttLibraryID() { return "LeifSimpleMQTT/ArduinoMQTT"; }
 #elif defined(USE_PUBSUBCLIENT)
 	const char * GetMqttLibraryID() { return "LeifSimpleMQTT/PubSubClient"; }
+#elif defined(USE_MPSCG)
+	const char * GetMqttLibraryID() { return "LeifSimpleMQTT/MQTTPubSubClient_Generic"; }
 #endif
 
 
@@ -188,6 +205,10 @@ private:
 	void onConnect(bool sessionPresent);
 	void onDisconnect(int8_t reason);
 	void onMqttMessage(char* topic, byte* payload, unsigned int len);
+#elif defined(USE_MPSCG)
+	void onConnect(bool sessionPresent);
+	void onDisconnect(int8_t reason);
+	void onMqttMessage(const char* topic, const char* payload, const size_t len);
 #endif
 
 	bool bConnecting=false;
@@ -238,5 +259,6 @@ private:
 	int GetErrorRetryFrequency();
 
 	unsigned long GetReconnectInterval();
+	int GetReconnectTimeout();
 
 };

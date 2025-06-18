@@ -26,6 +26,12 @@ int sub_qos=1;
 int sub_qos=2;
 #endif
 
+#if defined(USE_MPSCG)
+static void DummyTopicCallback(const char*, const size_t)
+{
+}
+#endif
+
 void MqttLibRegisterDebugPrintCallback(MqttDebugPrintCallback cb)
 {
 	vecDebugPrint.push_back(cb);
@@ -64,6 +70,7 @@ LeifSimpleMQTT::~LeifSimpleMQTT()
 
 void LeifSimpleMQTT::Init()
 {
+	csprintf(PSTR("Initializing: %s\n"),GetMqttLibraryID());
 
 	strcpy(szWillTopic,String("tele/"+strID+"/LWT").c_str());
 
@@ -89,6 +96,14 @@ void LeifSimpleMQTT::Init()
 			{
 				onMqttMessage(topic,payload,length);
 			});
+#elif defined(USE_MPSCG)
+	mqttClient.begin(client);
+	mqttClient.setWill(szWillTopic,"Offline",true,2);
+	mqttClient.subscribe([this](const char * topic, const char * payload, const size_t size)
+	{
+		//csprintf("mqtt message: %s=%s\n",topic,payload);
+		onMqttMessage(topic, payload, size);
+	});
 #endif
 
 	bSendError=false;
@@ -103,6 +118,8 @@ void LeifSimpleMQTT::Quit()
 	mqtt.disconnect(false);
 #elif defined(USE_ARDUINOMQTT) | defined(USE_PUBSUBCLIENT)
 	pMQTT->disconnect();
+#elif defined(USE_MPSCG)
+	mqttClient.disconnect();
 #endif
 	bInitialized=false;
 }
@@ -113,6 +130,8 @@ bool LeifSimpleMQTT::IsConnected()
 	return mqtt.connected();
 #elif defined(USE_ARDUINOMQTT) | defined(USE_PUBSUBCLIENT)
 	return pMQTT->connected();
+#elif defined(USE_MPSCG)
+	return mqttClient.isConnected();
 #endif
 }
 
@@ -180,6 +199,11 @@ void LeifSimpleMQTT::Loop()
 
 #if defined(USE_ARDUINOMQTT) | defined(USE_PUBSUBCLIENT)
 	pMQTT->loop();
+#elif defined(USE_MPSCG)
+	if(mqttClient.isConnected())
+	{
+		mqttClient.update();
+	}
 #endif
 
 	if(IsConnected())
@@ -195,6 +219,8 @@ void LeifSimpleMQTT::Loop()
 				mqtt.disconnect(false);
 #elif defined(USE_ARDUINOMQTT) | defined(USE_PUBSUBCLIENT)
 				pMQTT->disconnect();
+#elif defined(USE_MPSCG)
+				mqttClient.disconnect();
 #endif
 			}
 			return;
@@ -281,10 +307,45 @@ void LeifSimpleMQTT::Loop()
 					}
 #elif defined(USE_PUBSUBCLIENT)
 					pMQTT->setServer(ip,1883);
+					pMQTT->setSocketTimeout(GetReconnectTimeout());
 					int ret=pMQTT->connect(strClientID.c_str(), strMqttUserName.c_str(), strMqttPassword.c_str(), szWillTopic, 1, 1, "Offline");
 					if(ret)
 					{
 						onConnect(false);
+					}
+					else
+					{
+						onDisconnect(0);
+					}
+#elif defined(USE_MPSCG)
+#if defined(ARDUINO_ARCH_ESP32)
+					//ip.fromString("172.22.16.44");
+					//csprintf("connecting to IP %s, attempt %u mod %u timeout %i\n",ip.toString().c_str(),ulMqttReconnectCount, ulMqttReconnectCount % 3, timeout);
+					int ret=client.connect(ip, 1883, GetReconnectTimeout() );
+#else
+					int ret=client.connect(ip, 1883 );
+#endif
+					//csprintf("returned %i\n",ret);
+					if(ret==1)
+					{
+						//strMqttPassword="wrong";
+						//csprintf("connected! logging in: %s/%s (id %s)\n",strMqttUserName.c_str(),strMqttPassword.c_str(),strClientID.c_str());
+						if(mqttClient.connect(strClientID.c_str(),strMqttUserName.c_str(),strMqttPassword.c_str()))
+						{
+							//csprintf("logged in\n");
+							onConnect(false);
+						}
+						else
+						{
+							client.stop();
+							onDisconnect(0);
+						}
+
+
+					}
+					else
+					{
+						onDisconnect(0);
 					}
 #endif
 				}
@@ -299,6 +360,8 @@ void LeifSimpleMQTT::Loop()
 					mqtt.disconnect(true);
 #elif defined(USE_ARDUINOMQTT) | defined(USE_PUBSUBCLIENT)
 					pMQTT->disconnect();
+#elif defined(USE_MPSCG)
+					mqttClient.disconnect();
 #endif
 					bConnecting=false;
 				}
@@ -351,7 +414,7 @@ void LeifSimpleMQTT::onDisconnect(AsyncMqttClientDisconnectReason reason)
 	if(reason==AsyncMqttClientDisconnectReason::TCP_DISCONNECTED)
 	{
 	}
-#elif defined(USE_ARDUINOMQTT) | defined(USE_PUBSUBCLIENT)
+#elif defined(USE_ARDUINOMQTT) | defined(USE_PUBSUBCLIENT) | defined(USE_MPSCG)
 void LeifSimpleMQTT::onDisconnect(int8_t reason)
 {
 	(void)(reason);
@@ -385,6 +448,11 @@ void LeifSimpleMQTT::onClientCallbackAdvanced(MQTTClient *client, char topic[], 
 	(void)(client);
 #elif defined(USE_PUBSUBCLIENT)
 void LeifSimpleMQTT::onMqttMessage(char* topic, byte* payload, unsigned int len)
+{
+	void * properties=NULL;
+	uint8_t total=0; uint8_t index=0;
+#elif defined(USE_MPSCG)
+void LeifSimpleMQTT::onMqttMessage(const char* topic, const char* payload, size_t len)
 {
 	void * properties=NULL;
 	uint8_t total=0; uint8_t index=0;
@@ -560,6 +628,8 @@ void LeifSimpleMQTT::DoInitialPublishing()
 	MQTTClient & mqtt=*pMQTT;
 #elif defined(USE_PUBSUBCLIENT)
 	PubSubClient & mqtt=*pMQTT;
+#elif defined(USE_MPSCG)
+	MyPubSubClient & mqtt=mqttClient;
 #endif
 
 	if(!bDoInitialPublishing)
@@ -591,7 +661,11 @@ void LeifSimpleMQTT::DoInitialPublishing()
 				vecSub[i]->bSubscriptionFlag=true;
 				bool bError=false;
 				bool bSuccess=false;
+#if defined(USE_MPSCG)
+				bError |= (bSuccess=mqtt.subscribe(vecSub[i]->strTopic.c_str(), sub_qos, DummyTopicCallback));
+#else
 				bError |= (bSuccess=mqtt.subscribe(vecSub[i]->strTopic.c_str(), sub_qos));
+#endif
 #ifdef MQTTLIB_VERBOSE
 				csprintf(PSTR("Subscribed to %s: %s\n"),vecSub[i]->strTopic.c_str(),bSuccess?"SUCCESS":"FAILED");
 #endif
@@ -621,6 +695,8 @@ uint16_t LeifSimpleMQTT::PublishDirect(const String & topic, uint8_t qos, bool r
 #elif defined(USE_PUBSUBCLIENT)
 	(void)(qos);
 	return pMQTT->publish(topic.c_str(), (const uint8_t *) payload.c_str(), payload.length(), retain);
+#elif defined(USE_MPSCG)
+	return mqttClient.publish(topic.c_str(), payload.c_str(), retain, qos);
 #endif
 }
 
@@ -646,6 +722,8 @@ uint16_t LeifSimpleMQTT::Publish(const char* topic, uint8_t qos, bool retain, co
 #elif defined(USE_PUBSUBCLIENT)
 		(void)(qos);
 		ret=pMQTT->publish(topic, (uint8_t *) payload, length, retain);
+#elif defined(USE_MPSCG)
+		ret=mqttClient.publish(topic, payload, retain, qos);
 #endif
 	}
 
@@ -667,6 +745,9 @@ uint16_t LeifSimpleMQTT::Publish(const char* topic, uint8_t qos, bool retain, co
 				mqtt.disconnect(true);
 #elif defined(USE_ARDUINOMQTT) | defined(USE_PUBSUBCLIENT)
 				pMQTT->disconnect();
+#elif defined(USE_MPSCG)
+				mqttClient.disconnect();
+				onDisconnect(0);
 #endif
 				bSendError=false;
 				bConnecting=false;
@@ -784,6 +865,15 @@ unsigned long LeifSimpleMQTT::GetReconnectInterval()
 	return interval;
 }
 
+int LeifSimpleMQTT::GetReconnectTimeout()
+{
+	if(ulMqttReconnectCount<8)
+	{
+		return ((ulMqttReconnectCount % 3) == 2)?2000:1000;
+	}
+	return 5000;
+}
+
 
 void LeifSimpleMQTT::Subscribe(MqttSubscription & sub)
 {
@@ -832,6 +922,10 @@ void MqttSubscription::onMqttMessage(char* topic, char* payload, void * properti
 void MqttSubscription::onMqttMessage(char* topic, byte* payload, void * properties, unsigned int len, int index, int total)
 {
 	(void)(properties); (void)(total); (void)(topic);
+#elif defined(USE_MPSCG)
+void MqttSubscription::onMqttMessage(const char* topic, const char* payload, void * properties, size_t len, int index, int total)
+{
+	(void)(topic); (void)(properties); (void)(total);
 #endif
 
 	if(index==0)
